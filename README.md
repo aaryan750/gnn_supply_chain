@@ -60,9 +60,11 @@ To reproduce the research results:
    * from the command line with real data: `python train_script.py` (after data has been fetched).
 
 ## 📊 Results Summary
-Using a simulated out-of-sample backtest going long the top prediction decile and shorting the bottom decile:
-*   **Baseline MLP Sharpe Ratio:** 1.05
-*   **GCN Sharpe Ratio:** 1.82 (Significantly captures contagion alpha)
+Using a dollar-neutral, market-neutral simulated out-of-sample backtest going long the top prediction decile and shorting the bottom decile on the live S&P 500 feature dataset:
+*   **Annualized Return:** 4.07%
+*   **Annualized Volatility:** 5.06%
+*   **Sharpe Ratio:** 0.80
+*   **Max Drawdown:** -1.38%
 
 ---
 *For the complete mathematical formulation and literature review, please read the accompanying [Research Paper PDF](#).*
