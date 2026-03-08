@@ -46,8 +46,8 @@ def build_correlation_graph(returns_1d_path, threshold=0.5):
 if __name__ == "__main__":
     returns_file = os.path.join(PROCESSED_DIR, 'returns_1d.csv')
     
-    # We use a 0.0 correlation threshold as a proxy for our "Supply Chain/Contagion" graph
-    adj_matrix, G = build_correlation_graph(returns_file, threshold=0.0)
+    # We use a 0.2 correlation threshold as a proxy for our "Supply Chain/Contagion" graph
+    adj_matrix, G = build_correlation_graph(returns_file, threshold=0.2)
     
     if adj_matrix is not None:
         print("Graph construction complete. Ready for PyTorch Geometric model building.")

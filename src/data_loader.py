@@ -7,24 +7,44 @@ from datetime import datetime, timedelta
 
 import io
 
-def get_sp500_tickers(limit=None):
-    """Fetches the current S&P 500 tickers from Wikipedia."""
-    print("Fetching S&P 500 tickers from Wikipedia...")
+def get_sp1500_tickers(limit=None):
+    """Fetches S&P 500, MidCap 400, and a restricted slice of SmallCap 600."""
+    print("Fetching Large, Mid, and select Small Cap tickers from Wikipedia...")
+    
+    # URL List and how many to take from each (None means all)
+    configs = [
+        ('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies', None),     # All 500 Large
+        ('https://en.wikipedia.org/wiki/List_of_S%26P_400_companies', None),     # All 400 Mid
+        ('https://en.wikipedia.org/wiki/List_of_S%26P_600_companies', 50)        # Only 50 Small
+    ]
+    
+    all_tickers = []
     try:
-        url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
-        html = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}).text
-        table = pd.read_html(io.StringIO(html))
-        df = table[0]
-        # Replace dots with dashes for yfinance (e.g., BRK.B -> BRK-B)
-        tickers = df['Symbol'].str.replace('.', '-', regex=False).tolist()
+        for url, take_limit in configs:
+            html = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}).text
+            table = pd.read_html(io.StringIO(html))
+            df = table[0]
+            
+            col_name = 'Symbol' if 'Symbol' in df.columns else 'Ticker symbol'
+            if col_name not in df.columns:
+                col_name = 'Ticker'
+            
+            tickers = df[col_name].astype(str).str.replace('.', '-', regex=False).tolist()
+            if take_limit:
+                tickers = tickers[:take_limit]
+                
+            all_tickers.extend(tickers)
+        
+        all_tickers = list(set(all_tickers))
+        print(f"Successfully loaded {len(all_tickers)} unique high-quality tickers.")
+        
         if limit:
-            print(f"Limiting universe to {limit} tickers for faster processing.")
-            return tickers[:limit]
-        return tickers
+            return all_tickers[:limit]
+        return all_tickers
     except Exception as e:
-        print("Error fetching S&P 500 from Wikipedia. Falling back to default static list.")
-        # Fallback list if offline or missing lxml
-        return ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'BRK-B', 'JNJ', 'JPM']
+        print(f"Error fetching the S&P 1500: {e}")
+        # Fallback
+        return ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA']
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, 'data', 'raw')
@@ -67,9 +87,27 @@ def download_data(tickers, start_date, end_date):
         else:
             volume = None
         
-        # Save raw data
+        # Professional Data Cleansing: Drop any stock that didn't trade for the full 5 years
+        # Require 95% of data to be present to stay in the universe
+        threshold = int(len(adj_close) * 0.95)
+        adj_close = adj_close.dropna(axis=1, thresh=threshold)
+        
+        # Forward fill and backward fill remaining tiny gaps (e.g. trading halts)
+        adj_close = adj_close.ffill().bfill()
+        
+        if volume is not None:
+            # Sync volume matrix with the surviving adj_close matrix
+            surviving_tickers = adj_close.columns
+            
+            # Identify which surviving tickers actually exist in volume
+            valid_vol_tickers = [t for t in surviving_tickers if t in volume.columns]
+            volume = volume[valid_vol_tickers]
+            volume = volume.ffill().bfill()
+        
+        # Save raw cleansed data
         adj_close.to_csv(os.path.join(DATA_DIR, 'adj_close.csv'))
-        volume.to_csv(os.path.join(DATA_DIR, 'volume.csv'))
+        if volume is not None:
+             volume.to_csv(os.path.join(DATA_DIR, 'volume.csv'))
         
         print("Data successfully downloaded and saved to data/raw/")
         return adj_close, volume
@@ -110,9 +148,8 @@ if __name__ == "__main__":
     end_date = datetime.now().strftime('%Y-%m-%d')
     start_date = (datetime.now() - timedelta(days=5*365)).strftime('%Y-%m-%d')
     
-    # Fetch dynamically from Wikipedia (We cap at 250 to ensure API doesn't throttle too hard)
-    # Removing limit=250 builds the MASSIVE model.
-    tickers = get_sp500_tickers(limit=250)
+    # Fetch dynamically from Wikipedia - REMOVED LIMIT to push hardware
+    tickers = get_sp1500_tickers(limit=None)
     
     adj_close, volume = download_data(tickers, start_date, end_date)
     
