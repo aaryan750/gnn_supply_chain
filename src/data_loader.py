@@ -72,12 +72,10 @@ def download_data(tickers, start_date, end_date):
         else:
             cols_level0 = list(df.columns)
 
-        if 'Adj Close' in cols_level0:
-            adj_close = df['Adj Close']
-        elif 'Close' in cols_level0:
+        if 'Close' in cols_level0:
             adj_close = df['Close']
         else:
-            raise KeyError("Downloaded data does not contain 'Adj Close' or 'Close' columns")
+            raise KeyError("Downloaded data does not contain 'Close' columns")
 
         # Volume may be present under a top-level 'Volume' or as a single column.
         if 'Volume' in cols_level0:
@@ -148,8 +146,8 @@ if __name__ == "__main__":
     end_date = datetime.now().strftime('%Y-%m-%d')
     start_date = (datetime.now() - timedelta(days=5*365)).strftime('%Y-%m-%d')
     
-    # Fetch dynamically from Wikipedia - REMOVED LIMIT to push hardware
-    tickers = get_sp1500_tickers(limit=None)
+    # Fetch dynamically from Wikipedia - Limiting back to Top 250 for ultra-high Quality Signal
+    tickers = get_sp1500_tickers(limit=250)
     
     adj_close, volume = download_data(tickers, start_date, end_date)
     

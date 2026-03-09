@@ -6,34 +6,44 @@ import matplotlib.pyplot as plt
 
 PROCESSED_DIR = '../data/processed'
 
-def backtest_strategy(predictions, actual_returns, quantile=0.9):
+def backtest_strategy(predictions, actual_returns, quantile=0.9, mode='long_short'):
     """
     Vectorized backtester.
-    Longs the top quantile of predicted returns.
-    Shorts the bottom quantile of predicted returns.
+    mode='long_short': Longs top quantile, Shorts bottom quantile (Market Neutral, Low Risk).
+    mode='max_return': Heavily concentrates 100% capital into the Top 5 highest predicted assets (High Risk, Max Return).
     """
-    print(f"Running backtest... Long Top {1-quantile:.0%}, Short Bottom {1-quantile:.0%}")
-    
-    # Create signals based on predictions
-    # We want a market neutral portfolio
-    long_signals = (predictions >= np.quantile(predictions, quantile, axis=1, keepdims=True)).astype(int)
-    short_signals = (predictions <= np.quantile(predictions, 1 - quantile, axis=1, keepdims=True)).astype(int)
-    
-    # Weights (equal weight among selected)
-    long_weights = long_signals / np.sum(long_signals, axis=1, keepdims=True)
-    short_weights = short_signals / np.sum(short_signals, axis=1, keepdims=True)
-    
-    # Handle NaNs if no assets selected
-    long_weights = np.nan_to_num(long_weights)
-    short_weights = np.nan_to_num(short_weights)
-    
-    # Portfolio Weights (Long - Short)
-    portfolio_weights = long_weights - short_weights
-    
-    # Calculate Strategy Returns
-    strategy_returns = np.sum(portfolio_weights * actual_returns, axis=1)
-    
-    return strategy_returns
+    if mode == 'max_return':
+        print(f"Running backtest in MAX RETURN mode: 100% Long on Top {1-quantile:.0%} assets.")
+        
+        long_signals = (predictions >= np.quantile(predictions, quantile, axis=1, keepdims=True)).astype(int)
+        long_weights = long_signals / np.sum(long_signals, axis=1, keepdims=True)
+        long_weights = np.nan_to_num(long_weights)
+        
+        strategy_returns = np.sum(long_weights * actual_returns, axis=1)
+        return strategy_returns
+
+    else:
+        print(f"Running backtest... Long Top {1-quantile:.0%}, Short Bottom {1-quantile:.0%}")
+        
+        # Create signals based on predictions
+        long_signals = (predictions >= np.quantile(predictions, quantile, axis=1, keepdims=True)).astype(int)
+        short_signals = (predictions <= np.quantile(predictions, 1 - quantile, axis=1, keepdims=True)).astype(int)
+        
+        # Weights (equal weight among selected)
+        long_weights = long_signals / np.sum(long_signals, axis=1, keepdims=True)
+        short_weights = short_signals / np.sum(short_signals, axis=1, keepdims=True)
+        
+        # Handle NaNs if no assets selected
+        long_weights = np.nan_to_num(long_weights)
+        short_weights = np.nan_to_num(short_weights)
+        
+        # Portfolio Weights (Long - Short)
+        portfolio_weights = long_weights - short_weights
+        
+        # Calculate Strategy Returns
+        strategy_returns = np.sum(portfolio_weights * actual_returns, axis=1)
+        
+        return strategy_returns
 
 def calculate_metrics(strategy_returns):
     """Calculates standard quantitative finance metrics."""

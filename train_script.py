@@ -115,7 +115,7 @@ def main():
     predictions = np.stack(predictions)
     actuals = np.stack(actuals)
 
-    returns = backtest_strategy(predictions, actuals, quantile=0.9)
+    returns = backtest_strategy(predictions, actuals, quantile=0.95, mode='max_return')
     calculate_metrics(returns)
 
 if __name__ == "__main__":
